@@ -1,30 +1,35 @@
+from hdfs import InsecureClient
 import pandas as pd
-import os
+import time
 
-PARQUET_FILE = "data/data.parquet"
+# Wait for Hadoop NameNode
+time.sleep(10)
 
-data1 = {"id": 1, "name": "Vanitas", "score": 95}
-data2 = {"id": 2, "name": "Wasiq", "score": 100}
+# Connect to Hadoop NameNode
+client = InsecureClient('http://namenode:50070', user='hadoop')
 
-df_new = pd.DataFrame([data1, data2])
+# Create sample data
+data = {
+    "id": [1, 2, 3],
+    "name": ["Wasiq", "Ali", "Sara"],
+    "marks": [95, 88, 92]
+}
+df = pd.DataFrame(data)
 
-if os.path.exists(PARQUET_FILE):
-    df_existing = pd.read_parquet(PARQUET_FILE)
-    df_combined = pd.concat([df_existing, df_new]).drop_duplicates(subset=["id"])
-else:
-    df_combined = df_new
+# Save CSV locally
+csv_file = "students.csv"
+df.to_csv(csv_file, index=False)
 
-os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
-df_combined.to_parquet(PARQUET_FILE, index=False)
+# Write to HDFS
+hdfs_path = "/user/hadoop/students.csv"
+with open(csv_file, "r") as f:
+    client.write(hdfs_path, data=f, overwrite=True)
 
-print("Data written to Parquet with unique rows:")
-print(df_combined)
+print(f"✅ File saved to HDFS at {hdfs_path}")
 
-try:
-    from hdfs import InsecureClient
-    client = InsecureClient('http://hadoop:9870', user='root')
-    hdfs_path = "/data/data.parquet"
-    client.upload(hdfs_path, PARQUET_FILE, overwrite=True)
-    print(f"Successfully uploaded to HDFS: {hdfs_path}")
-except Exception as e:
-    print(f"Could not upload to HDFS: {e}")
+# Read from HDFS
+with client.read(hdfs_path, encoding='utf-8') as reader:
+    content = reader.read()
+
+print("\n--- File Content from HDFS ---")
+print(content)

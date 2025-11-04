@@ -1,26 +1,14 @@
+version: '3'
 services:
-  hadoop:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: hadoop
-    environment:
-      - CLUSTER_NAME=hadoop-cluster
-    volumes:
-      - ./hadoop_namenode:/hadoop/dfs/name
+  namenode:
+    image: sequenceiq/hadoop-docker:2.7.0
+    container_name: namenode
     ports:
-      - "9870:9870"
+      - "50070:50070"
       - "9000:9000"
-    networks:
-      - hadoop-net
-
-  parquet_writer:
+    command: /etc/bootstrap.sh -d
+  app:
     build: .
-    volumes:
-      - ./data:/app/data
+    container_name: python_hadoop
     depends_on:
-      - hadoop
-    networks:
-      - hadoop-net
-
-networks:
-  hadoop-net:
-    driver: bridge
+      - namenode
